@@ -151,24 +151,26 @@ class _FlutterBrowserAppState extends State<FlutterBrowserApp>
     with WindowListener {
 
   // https://github.com/pichillilorenzo/window_manager_plus/issues/5
-  late final AppLifecycleListener? _appLifecycleListener;
+  AppLifecycleListener? _appLifecycleListener;
 
   @override
   void initState() {
     super.initState();
-    WindowManagerPlus.current.addListener(this);
+    if (Util.isDesktop()) {
+      WindowManagerPlus.current.addListener(this);
 
-    // https://github.com/pichillilorenzo/window_manager_plus/issues/5
-    if (WindowManagerPlus.current.id > 0 && Platform.isMacOS) {
-      _appLifecycleListener = AppLifecycleListener(
-        onStateChange: _handleStateChange,
-      );
+      // https://github.com/pichillilorenzo/window_manager_plus/issues/5
+      if (WindowManagerPlus.current.id > 0 && Platform.isMacOS) {
+        _appLifecycleListener = AppLifecycleListener(
+          onStateChange: _handleStateChange,
+        );
+      }
     }
   }
 
   void _handleStateChange(AppLifecycleState state) {
     // https://github.com/pichillilorenzo/window_manager_plus/issues/5
-    if (WindowManagerPlus.current.id > 0 && Platform.isMacOS && state == AppLifecycleState.hidden) {
+    if (Util.isDesktop() && WindowManagerPlus.current.id > 0 && Platform.isMacOS && state == AppLifecycleState.hidden) {
       SchedulerBinding.instance.handleAppLifecycleStateChanged(
           AppLifecycleState.inactive);
     }
@@ -176,7 +178,9 @@ class _FlutterBrowserAppState extends State<FlutterBrowserApp>
 
   @override
   void dispose() {
-    WindowManagerPlus.current.removeListener(this);
+    if (Util.isDesktop()) {
+      WindowManagerPlus.current.removeListener(this);
+    }
     _appLifecycleListener?.dispose();
     super.dispose();
   }
@@ -205,14 +209,14 @@ class _FlutterBrowserAppState extends State<FlutterBrowserApp>
   @override
   void onWindowFocus([int? windowId]) {
     setState(() {});
-    if (!Util.isWindows()) {
+    if (Util.isDesktop() && !Util.isWindows()) {
       WindowManagerPlus.current.setMovable(false);
     }
   }
 
   @override
   void onWindowBlur([int? windowId]) {
-    if (!Util.isWindows()) {
+    if (Util.isDesktop() && !Util.isWindows()) {
       WindowManagerPlus.current.setMovable(true);
     }
   }
