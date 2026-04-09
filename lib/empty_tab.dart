@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_browser/custom_image.dart';
 import 'package:flutter_browser/util.dart';
 import 'package:flutter_browser/webview_tab.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -18,109 +22,63 @@ class EmptyTab extends StatefulWidget {
 class _EmptyTabState extends State<EmptyTab> {
   final _controller = TextEditingController();
 
-  Widget _buildShortcutItem(int index) {
-    List<Map<String, dynamic>> items = [
-      {
-        "title": "LedgerBox",
-        "url": "https://ledgerbox.com",
-        "widget": Center(
-            child: Text("LB",
-                style: TextStyle(
-                    color: Colors.blue,
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 28)))
-      },
-      {
-        "title": "Baidu",
-        "url": "https://www.baidu.com",
-        "widget": Center(
-            child: Text("du",
-                style: TextStyle(
-                    color: Colors.blue[800],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 26)))
-      },
-      {
-        "title": "360 Search",
-        "url": "https://www.so.com",
-        "widget": Center(
-            child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.orange, width: 4)),
-                child: Center(
-                    child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle, color: Colors.green)))))
-      },
-      {
-        "title": "Gitee",
-        "url": "https://gitee.com",
-        "widget": Center(
-            child: Container(
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(4),
-                child: Text("G",
-                    style: TextStyle(
-                        color: Colors.red[700],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 26))))
-      },
-      {
-        "title": "Tencent",
-        "url": "https://www.tencent.com",
-        "widget": Center(
-            child: Icon(Icons.send, color: Colors.blue[600], size: 32))
-      },
-      {
-        "title": "NPM Mirror",
-        "url": "https://npmmirror.com",
-        "widget": Center(
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(color: Colors.orange, width: 14, height: 14),
-          const SizedBox(width: 2),
-          Container(color: Colors.blue, width: 14, height: 14)
-        ]))
-      },
-      {
-        "title": "Apifox",
-        "url": "https://apifox.com",
-        "widget": Center(
-            child: Icon(Icons.api, color: Colors.redAccent, size: 36))
-      },
-      {
-        "title": "JSON.cn",
-        "url": "https://www.json.cn",
-        "widget": Center(
-            child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(4)),
-                child: const Text("JSON",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold))))
-      },
-      {
-        "title": "CSDN",
-        "url": "https://www.csdn.net",
-        "widget": Center(
-            child: Text("C",
-                style: TextStyle(
-                    color: Colors.deepOrange,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold)))
-      },
-    ];
+  List<Map<String, dynamic>> _quickLinks = [];
+  bool _isLoading = true;
 
-    var item = items[index];
+  @override
+  void initState() {
+    super.initState();
+    _fetchQuickLinks();
+  }
+
+  Future<void> _fetchQuickLinks() async {
+    try {
+      final httpClient = HttpClient();
+      final request = await httpClient.getUrl(Uri.parse(
+          'https://usdable.oss-cn-hongkong.aliyuncs.com/tagCollection.json'));
+      final response = await request.close();
+      if (response.statusCode == 200) {
+        final responseBody = await response.transform(utf8.decoder).join();
+        final json = jsonDecode(responseBody);
+        final data = json['data'] as List;
+
+        List<Map<String, dynamic>> parsedItems = [];
+        for (var collection in data) {
+          final links = collection['links'] as List;
+          for (var link in links) {
+            parsedItems.add({
+              "title": link['name'],
+              "url": link['url'],
+              "iconUrl": link['icon'],
+            });
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _quickLinks = parsedItems.take(9).toList();
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildShortcutItem(int index) {
+    if (index >= _quickLinks.length) return Container();
+    var item = _quickLinks[index];
 
     return GestureDetector(
         onTap: () => openNewTab(item["url"]),
@@ -138,7 +96,13 @@ class _EmptyTabState extends State<EmptyTab> {
                               blurRadius: 10,
                               offset: const Offset(0, 4))
                         ]),
-                    child: item["widget"] as Widget)),
+                    child: Center(
+                      child: CustomImage(
+                        url: WebUri(item["iconUrl"] as String),
+                        maxWidth: 32.0,
+                        height: 32.0,
+                      ),
+                    ))),
             const SizedBox(height: 8),
             Text(item["title"] as String,
                 maxLines: 1,
@@ -311,7 +275,7 @@ class _EmptyTabState extends State<EmptyTab> {
                               fontSize: 11.0,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5)),
-                      Text(" |  9 nodes",
+                      Text(" | ${_quickLinks.length} nodes",
                           style: TextStyle(
                               color: Colors.grey[400], fontSize: 11.0)),
                     ]),
@@ -319,21 +283,27 @@ class _EmptyTabState extends State<EmptyTab> {
                     const SizedBox(height: 24),
 
                     // Grid View
-                    GridView.builder(
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: 9,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          childAspectRatio: 0.9,
-                          crossAxisSpacing: 16.0,
-                          mainAxisSpacing: 16.0,
-                        ),
-                        itemBuilder: (context, index) {
-                          return _buildShortcutItem(index);
-                        })
+                    _isLoading
+                        ? const Center(
+                            child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: CircularProgressIndicator(),
+                          ))
+                        : GridView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _quickLinks.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              childAspectRatio: 0.9,
+                              crossAxisSpacing: 16.0,
+                              mainAxisSpacing: 16.0,
+                            ),
+                            itemBuilder: (context, index) {
+                              return _buildShortcutItem(index);
+                            })
                   ]))),
     );
   }
