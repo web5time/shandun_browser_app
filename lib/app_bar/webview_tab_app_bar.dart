@@ -285,7 +285,7 @@ class _WebViewTabAppBarState extends State<WebViewTabAppBar>
               border: outlineBorder,
               focusedBorder: outlineBorder,
               enabledBorder: outlineBorder,
-              hintText: "Search for or type a web address",
+              hintText: "",
               hintStyle: const TextStyle(color: Colors.black54, fontSize: 16.0),
             ),
             style: const TextStyle(color: Colors.black, fontSize: 16.0),

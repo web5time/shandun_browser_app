@@ -211,7 +211,7 @@ class _EmptyTabState extends State<EmptyTab> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 24.0),
                               ),
-                              child: const Text("RUN",
+                              child: const Text("搜索",
                                   style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13.0)),

@@ -126,19 +126,21 @@ class _BrowserState extends State<Browser> with SingleTickerProviderStateMixin {
 
           return windowModel.webViewTabs.isEmpty;
         },
-        child: Listener(
-          onPointerUp: (_) {
-            if (Util.isIOS() || Util.isAndroid()) {
-              FocusScopeNode currentFocus = FocusScope.of(context);
-              if (!currentFocus.hasPrimaryFocus &&
-                  currentFocus.focusedChild != null) {
-                currentFocus.focusedChild!.unfocus();
-              }
-            }
-          },
-          child: Scaffold(
-              appBar: BrowserAppBar(), body: _buildWebViewTabsContent()),
-        ));
+        child: Scaffold(
+              appBar: BrowserAppBar(),
+              body: Listener(
+                onPointerUp: (_) {
+                  if (Util.isIOS() || Util.isAndroid()) {
+                    FocusScopeNode currentFocus = FocusScope.of(context);
+                    if (!currentFocus.hasPrimaryFocus &&
+                        currentFocus.focusedChild != null) {
+                      currentFocus.focusedChild!.unfocus();
+                    }
+                  }
+                },
+                child: _buildWebViewTabsContent(),
+              )),
+        );
   }
 
   Widget _buildWebViewTabsContent() {
