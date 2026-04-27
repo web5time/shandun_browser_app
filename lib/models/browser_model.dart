@@ -21,7 +21,7 @@ class BrowserSettings {
   bool debuggingEnabled;
 
   BrowserSettings(
-      {this.searchEngine = GoogleSearchEngine,
+      {this.searchEngine = BingSearchEngine,
       this.homePageEnabled = false,
       this.customUrlHomePage = "",
       this.debuggingEnabled = false});

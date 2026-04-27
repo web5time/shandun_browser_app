@@ -41,8 +41,7 @@ class PopupMenuActions {
         SHARE,
         FIND_ON_PAGE,
         SETTINGS,
-        DEVELOPERS,
-        INAPPWEBVIEW_PROJECT
+        DEVELOPERS
       ];
     }
     return [

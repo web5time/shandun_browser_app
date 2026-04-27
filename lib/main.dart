@@ -188,7 +188,7 @@ class _FlutterBrowserAppState extends State<FlutterBrowserApp>
   @override
   Widget build(BuildContext context) {
     final materialApp = MaterialApp(
-      title: 'Flutter Browser',
+      title: '闪盾浏览器',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         visualDensity: VisualDensity.adaptivePlatformDensity,
