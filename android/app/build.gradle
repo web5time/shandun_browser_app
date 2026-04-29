@@ -46,7 +46,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.pichillilorenzo.flutter_browser"
+        applicationId "com.daqu.shandun.browser.android"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
@@ -71,7 +71,7 @@ android {
             }
         }
     }
-    namespace 'com.pichillilorenzo.flutter_browser'
+    namespace 'com.daqu.shandun.browser.android'
     lint {
         disable 'InvalidPackage'
     }
