@@ -7,6 +7,8 @@ import 'package:flutter_browser/util.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart'
+    as device_permission;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -501,9 +503,7 @@ class _WebViewTabState extends State<WebViewTab> with WidgetsBindingObserver {
         }
       },
       onPermissionRequest: (controller, permissionRequest) async {
-        return PermissionResponse(
-            resources: permissionRequest.resources,
-            action: PermissionResponseAction.GRANT);
+        return _handleWebPermissionRequest(permissionRequest);
       },
       onReceivedHttpAuthRequest: (controller, challenge) async {
         var action = await createHttpAuthDialog(challenge);
@@ -518,6 +518,119 @@ class _WebViewTabState extends State<WebViewTab> with WidgetsBindingObserver {
 
   bool isCurrentTab(WebViewModel currentWebViewModel) {
     return currentWebViewModel.tabIndex == widget.webViewModel.tabIndex;
+  }
+
+  Future<PermissionResponse> _handleWebPermissionRequest(
+      PermissionRequest permissionRequest) async {
+    final resources = permissionRequest.resources;
+    if (resources.isEmpty) {
+      return PermissionResponse(action: PermissionResponseAction.DENY);
+    }
+
+    final confirmed = await _confirmWebPermissionRequest(permissionRequest);
+    if (!confirmed) {
+      return PermissionResponse(action: PermissionResponseAction.DENY);
+    }
+
+    final grantedResources = <PermissionResourceType>[];
+    for (final resource in resources) {
+      if (await _ensureDevicePermission(resource)) {
+        grantedResources.add(resource);
+      }
+    }
+
+    return PermissionResponse(
+      resources: grantedResources,
+      action: grantedResources.isEmpty
+          ? PermissionResponseAction.DENY
+          : PermissionResponseAction.GRANT,
+    );
+  }
+
+  Future<bool> _confirmWebPermissionRequest(
+      PermissionRequest permissionRequest) async {
+    if (!mounted) {
+      return false;
+    }
+
+    final origin = permissionRequest.origin.toString();
+    final permissionNames =
+        _formatPermissionResourceNames(permissionRequest.resources);
+
+    final allowed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('网页权限请求'),
+          content: Text('$origin 想使用$permissionNames。是否允许？'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('拒绝'),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            ElevatedButton(
+              child: const Text('允许'),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    return allowed ?? false;
+  }
+
+  String _formatPermissionResourceNames(
+      List<PermissionResourceType> resources) {
+    final names = <String>{};
+    for (final resource in resources) {
+      if (resource == PermissionResourceType.CAMERA ||
+          resource == PermissionResourceType.CAMERA_AND_MICROPHONE) {
+        names.add('摄像头');
+      }
+      if (resource == PermissionResourceType.MICROPHONE ||
+          resource == PermissionResourceType.CAMERA_AND_MICROPHONE) {
+        names.add('麦克风');
+      }
+      if (resource == PermissionResourceType.MIDI_SYSEX) {
+        names.add('MIDI 设备');
+      }
+      if (resource == PermissionResourceType.PROTECTED_MEDIA_ID) {
+        names.add('受保护媒体标识');
+      }
+    }
+    if (names.isEmpty) {
+      names.add('网页权限');
+    }
+    return names.join('、');
+  }
+
+  Future<bool> _ensureDevicePermission(PermissionResourceType resource) async {
+    if (!Util.isAndroid() && !Util.isIOS()) {
+      return true;
+    }
+
+    if (resource == PermissionResourceType.CAMERA) {
+      return (await device_permission.Permission.camera.request()).isGranted;
+    }
+    if (resource == PermissionResourceType.MICROPHONE) {
+      return (await device_permission.Permission.microphone.request())
+          .isGranted;
+    }
+    if (resource == PermissionResourceType.CAMERA_AND_MICROPHONE) {
+      final statuses = await [
+        device_permission.Permission.camera,
+        device_permission.Permission.microphone,
+      ].request();
+      return statuses[device_permission.Permission.camera]?.isGranted == true &&
+          statuses[device_permission.Permission.microphone]?.isGranted == true;
+    }
+
+    return true;
   }
 
   Future<HttpAuthResponseAction> createHttpAuthDialog(

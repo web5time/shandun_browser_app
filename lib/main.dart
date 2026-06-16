@@ -10,7 +10,6 @@ import 'package:flutter_browser/models/window_model.dart';
 import 'package:flutter_browser/util.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:sqflite/sqflite.dart';
@@ -111,12 +110,6 @@ void main(List<String> args) async {
     await FlutterDownloader.initialize(debug: kDebugMode);
   }
 
-  if (Util.isMobile()) {
-    await Permission.camera.request();
-    await Permission.microphone.request();
-    await Permission.storage.request();
-  }
-
   runApp(
     MultiProvider(
       providers: [
@@ -131,8 +124,7 @@ void main(List<String> args) async {
             windowModel!.setCurrentWebViewModel(webViewModel);
             return windowModel;
           },
-          create: (BuildContext context) =>
-              WindowModel(id: null),
+          create: (BuildContext context) => WindowModel(id: null),
         ),
       ],
       child: const FlutterBrowserApp(),
@@ -149,7 +141,6 @@ class FlutterBrowserApp extends StatefulWidget {
 
 class _FlutterBrowserAppState extends State<FlutterBrowserApp>
     with WindowListener {
-
   // https://github.com/pichillilorenzo/window_manager_plus/issues/5
   AppLifecycleListener? _appLifecycleListener;
 
@@ -170,9 +161,12 @@ class _FlutterBrowserAppState extends State<FlutterBrowserApp>
 
   void _handleStateChange(AppLifecycleState state) {
     // https://github.com/pichillilorenzo/window_manager_plus/issues/5
-    if (Util.isDesktop() && WindowManagerPlus.current.id > 0 && Platform.isMacOS && state == AppLifecycleState.hidden) {
-      SchedulerBinding.instance.handleAppLifecycleStateChanged(
-          AppLifecycleState.inactive);
+    if (Util.isDesktop() &&
+        WindowManagerPlus.current.id > 0 &&
+        Platform.isMacOS &&
+        state == AppLifecycleState.hidden) {
+      SchedulerBinding.instance
+          .handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     }
   }
 
