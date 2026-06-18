@@ -4,6 +4,7 @@ import 'package:context_menus/context_menus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_browser/models/browser_model.dart';
 import 'package:flutter_browser/models/webview_model.dart';
 import 'package:flutter_browser/models/window_model.dart';
@@ -14,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager_plus/window_manager_plus.dart';
 import 'package:path/path.dart' as p;
 
@@ -40,6 +42,10 @@ const double TAB_VIEWER_TOP_SCALE_BOTTOM_OFFSET = 230.0;
 
 WebViewEnvironment? webViewEnvironment;
 Database? db;
+File? _privacyConsentFile;
+
+const String _privacyPolicyUrl = 'https://www.shandun.top/privacy';
+const String _userAgreementUrl = 'https://www.shandun.top/terms';
 
 int windowId = 0;
 String? windowModelId;
@@ -54,6 +60,8 @@ void main(List<String> args) async {
   }
 
   final appDocumentsDir = await getApplicationDocumentsDirectory();
+  _privacyConsentFile =
+      File(p.join(appDocumentsDir.path, 'privacy_policy_accepted_v1'));
 
   if (Util.isDesktop()) {
     sqfliteFfiInit();
@@ -189,7 +197,7 @@ class _FlutterBrowserAppState extends State<FlutterBrowserApp>
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const Browser(),
+        '/': (context) => const PrivacyConsentGate(),
       },
     );
 
@@ -213,5 +221,148 @@ class _FlutterBrowserAppState extends State<FlutterBrowserApp>
     if (Util.isDesktop() && !Util.isWindows()) {
       WindowManagerPlus.current.setMovable(true);
     }
+  }
+}
+
+class PrivacyConsentGate extends StatefulWidget {
+  const PrivacyConsentGate({super.key});
+
+  @override
+  State<PrivacyConsentGate> createState() => _PrivacyConsentGateState();
+}
+
+class _PrivacyConsentGateState extends State<PrivacyConsentGate> {
+  late Future<bool> _acceptedFuture;
+  var _dialogShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _acceptedFuture = Util.isAndroid()
+        ? _hasAcceptedPrivacyPolicy()
+        : Future<bool>.value(true);
+  }
+
+  Future<bool> _hasAcceptedPrivacyPolicy() async {
+    final file = _privacyConsentFile;
+    return file == null || file.existsSync();
+  }
+
+  Future<void> _acceptPrivacyPolicy() async {
+    final file = _privacyConsentFile;
+    if (file == null) {
+      return;
+    }
+    await file.create(recursive: true);
+    await file.writeAsString(DateTime.now().toIso8601String());
+  }
+
+  Future<void> _openPolicyLink(String url, String errorMessage) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+      return;
+    }
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
+  }
+
+  void _showPrivacyDialog() {
+    if (_dialogShown) {
+      return;
+    }
+    _dialogShown = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        return;
+      }
+
+      final accepted = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('隐私政策提示'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '欢迎使用闪盾浏览器。请先阅读并同意用户协议和隐私政策，了解服务规则以及我们如何处理必要的设备权限和使用数据。',
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => _openPolicyLink(
+                  _userAgreementUrl,
+                  '无法打开用户协议',
+                ),
+                child: const Text('查看《用户协议》'),
+              ),
+              TextButton(
+                onPressed: () => _openPolicyLink(
+                  _privacyPolicyUrl,
+                  '无法打开隐私政策',
+                ),
+                child: const Text('查看《隐私政策》'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('不同意'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await _acceptPrivacyPolicy();
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop(true);
+                }
+              },
+              child: const Text('同意并继续'),
+            ),
+          ],
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (accepted == true) {
+        setState(() {
+          _acceptedFuture = Future<bool>.value(true);
+        });
+      } else {
+        SystemNavigator.pop();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _acceptedFuture,
+      builder: (context, snapshot) {
+        if (snapshot.data == true) {
+          return const Browser();
+        }
+
+        if (snapshot.connectionState != ConnectionState.waiting) {
+          _showPrivacyDialog();
+        }
+
+        return const Scaffold(
+          body: SizedBox.expand(),
+        );
+      },
+    );
   }
 }
