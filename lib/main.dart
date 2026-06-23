@@ -20,6 +20,7 @@ import 'package:window_manager_plus/window_manager_plus.dart';
 import 'package:path/path.dart' as p;
 
 import 'browser.dart';
+import 'privacy_links.dart';
 
 // ignore: non_constant_identifier_names
 late final String WEB_ARCHIVE_DIR;
@@ -43,9 +44,6 @@ const double TAB_VIEWER_TOP_SCALE_BOTTOM_OFFSET = 230.0;
 WebViewEnvironment? webViewEnvironment;
 Database? db;
 File? _privacyConsentFile;
-
-const String _privacyPolicyUrl = 'https://www.shandun.top/privacy';
-const String _userAgreementUrl = 'https://www.shandun.top/terms';
 
 int windowId = 0;
 String? windowModelId;
@@ -300,14 +298,14 @@ class _PrivacyConsentGateState extends State<PrivacyConsentGate> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => _openPolicyLink(
-                  _userAgreementUrl,
+                  userAgreementUrl,
                   '无法打开用户协议',
                 ),
                 child: const Text('查看《用户协议》'),
               ),
               TextButton(
                 onPressed: () => _openPolicyLink(
-                  _privacyPolicyUrl,
+                  privacyPolicyUrl,
                   '无法打开隐私政策',
                 ),
                 child: const Text('查看《隐私政策》'),

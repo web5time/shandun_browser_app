@@ -9,7 +9,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/window_model.dart';
+import '../../privacy_links.dart';
 import '../../project_info_popup.dart';
+import '../../webview_tab.dart';
 
 class CrossPlatformSettings extends StatefulWidget {
   const CrossPlatformSettings({super.key});
@@ -196,6 +198,18 @@ class _CrossPlatformSettingsState extends State<CrossPlatformSettings> {
               Clipboard.setData(ClipboardData(text: packageDescription));
             },
           );
+        },
+      ),
+      ListTile(
+        title: const Text("隐私政策"),
+        subtitle: const Text(privacyPolicyUrl),
+        trailing: const Icon(Icons.arrow_forward),
+        onTap: () {
+          windowModel.addTab(WebViewTab(
+            key: GlobalKey(),
+            webViewModel: WebViewModel(url: WebUri(privacyPolicyUrl)),
+          ));
+          Navigator.pop(context);
         },
       ),
       ListTile(

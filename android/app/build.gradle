@@ -46,7 +46,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "comn.usdab.machine"
+        applicationId "com.usdab.machine"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
